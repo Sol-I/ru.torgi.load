@@ -65,4 +65,8 @@ public class Option {
 
     }
 
+    public static int countOfTags(Document doc, String tag) {
+        return doc.getElementsByTagName(tag).getLength();
+    }
+
 }

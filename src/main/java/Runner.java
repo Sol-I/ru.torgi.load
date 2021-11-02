@@ -1,4 +1,7 @@
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 public class Runner {
 
@@ -15,10 +18,31 @@ public class Runner {
         assert doc != null;
 
         //show list of tags
-        Option.listOfTags(doc);
+        //Option.listOfTags(doc);
         System.out.println("-------------------------------------------");
 
-        //System.out.println(doc.getElementsByTagName("organizationName"));
+        //System.out.println(doc.getElementsByTagName("notification"));
+        int countOfNotification = Option.countOfTags(doc, "notification");
+        if (countOfNotification > 0) {
+            int countOfChild;
+            NodeList listOfChild;
+            NodeList nodeList = doc.getElementsByTagName("notification");
+            for (int i = 0; i < countOfNotification; i++) {
+                System.out.println("------------ Notification " + (i + 1) + " ------------");
+                listOfChild = nodeList.item(i).getChildNodes();
+                countOfChild = listOfChild.getLength();
+                if (countOfChild > 0) {
+                    Node node;
+                    for (int j = 0; j < countOfChild; j++) {
+                        node = listOfChild.item(j);
+                        if (node.getNodeType() != Node.TEXT_NODE) {
+                            System.out.println(node.getNodeName() + ": "
+                                    + node.getFirstChild().getNodeValue());
+                        }
+                    }
+                }
+            }
+        }
 
     }
 

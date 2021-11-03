@@ -22,27 +22,9 @@ public class Runner {
         System.out.println("-------------------------------------------");
 
         //System.out.println(doc.getElementsByTagName("notification"));
-        int countOfNotification = Option.countOfTags(doc, "notification");
-        if (countOfNotification > 0) {
-            int countOfChild;
-            NodeList listOfChild;
-            NodeList nodeList = doc.getElementsByTagName("notification");
-            for (int i = 0; i < countOfNotification; i++) {
-                System.out.println("------------ Notification " + (i + 1) + " ------------");
-                listOfChild = nodeList.item(i).getChildNodes();
-                countOfChild = listOfChild.getLength();
-                if (countOfChild > 0) {
-                    Node node;
-                    for (int j = 0; j < countOfChild; j++) {
-                        node = listOfChild.item(j);
-                        if (node.getNodeType() != Node.TEXT_NODE) {
-                            System.out.println(node.getNodeName() + ": "
-                                    + node.getFirstChild().getNodeValue());
-                        }
-                    }
-                }
-            }
-        }
+        //Option.saveNotification(doc);
+
+        System.out.println("Max ID: " + Option.getLastNumber());
 
     }
 

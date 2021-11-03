@@ -7,10 +7,13 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.sql.*;
+import java.util.Properties;
 
 public class Option {
 
@@ -98,32 +101,29 @@ public class Option {
 
     public static long getLastNumber() {
 
-        // JDBC URL, username and password of MySQL server
-        String url = "jdbc:mysql://localhost:3306/torgi";
-        String user = "root";
-        String password = "admin";
-
-        // JDBC variables for opening and managing connection
-        String query = "SELECT max(ID) FROM notifications";
         int count = -1;
 
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
+            FileReader reader = new FileReader("src/main/resources/META-INF/db.properties");
+            Properties p = new Properties();
+            p.load(reader);
+            String url = p.getProperty("url");
+            String user = p.getProperty("user");
+            String password = p.getProperty("password");
+            String driver = p.getProperty("driver");
+
+            Class.forName(driver);
+
+            Connection con = DriverManager.getConnection(url, user, password);
+            Statement stmt = con.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT max(ID) FROM notifications");
+            while (rs.next()) count = rs.getInt(1);
+
+        } catch (IOException | ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
 
-        try (Connection con = DriverManager.getConnection(url, user, password);
-             Statement stmt = con.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
-            while (rs.next()) {
-                count = rs.getInt(1);
-            }
-
-        } catch (SQLException sqlEx) {
-            sqlEx.printStackTrace();
-
-        }
         return count;
+
     }
 }

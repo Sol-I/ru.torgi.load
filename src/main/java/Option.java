@@ -7,13 +7,15 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.FileNotFoundException;
+import java.awt.List;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.sql.*;
-import java.util.Properties;
+import java.util.*;
 
 public class Option {
 
@@ -39,69 +41,102 @@ public class Option {
 
         //Get xml document from URL address
         try {
-
             DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
-            f.setNamespaceAware(false);
-            f.setValidating(false);
             DocumentBuilder b = f.newDocumentBuilder();
-
-            URLConnection urlConnection = new URL(url).openConnection();
-            Document doc = b.parse(urlConnection.getInputStream(), "UTF-8");
+            Document doc;
+            if (url.contains("http")) {
+                InputStream inputStream = new URL(url).openStream();
+                doc = b.parse(inputStream, "UTF-8");
+                inputStream.close();
+            } else {
+                doc = b.parse(new File(url));
+            }
             doc.getDocumentElement().normalize();
-
+            NodeList nodes = doc.getElementsByTagName("*");
+//            System.out.println(nodes.getLength() + " nodes found");
             return doc;
-
         } catch (SAXException | ParserConfigurationException | IOException e) {
             return null;
         }
-
     }
 
-    public static void listOfTags(Document doc) {
+    public static void loadNotification(Document doc) throws SQLException {
 
-        NodeList nodeList = doc.getElementsByTagName("*");
-        for (int i = 0; i < nodeList.getLength(); i++) {
-            // Get element
-            Element element = (Element) nodeList.item(i);
-//            System.out.println(element.getNodeName() + ": " + element.getTextContent());
-            if (element.getNodeType() == 1)
-                System.out.println(element.getNodeName() + ": " + element.getFirstChild().getNodeValue());
-        }
+        NodeList nodeList = doc.getElementsByTagName("notification");
+        int countOfNotification = nodeList.getLength();
 
-    }
-
-    public static int countOfTags(Document doc, String tag) {
-        return doc.getElementsByTagName(tag).getLength();
-    }
-
-    public static void saveNotification(Document doc) {
-
-        int countOfNotification = Option.countOfTags(doc, "notification");
         if (countOfNotification > 0) {
-            int countOfChild;
-            NodeList listOfChild;
-            NodeList nodeList = doc.getElementsByTagName("notification");
+            long currentID = Option.getLastNumber();
             for (int i = 0; i < countOfNotification; i++) {
+
                 System.out.println("------------ Notification " + (i + 1) + " ------------");
-                listOfChild = nodeList.item(i).getChildNodes();
-                countOfChild = listOfChild.getLength();
+
+                NodeList listOfChild = nodeList.item(i).getChildNodes();
+                int countOfChild = listOfChild.getLength();
+
                 if (countOfChild > 0) {
-                    Node node;
+                    Map<String, String> map = new HashMap<>();
+
+                    StringBuilder nameKey = new StringBuilder();
+
                     for (int j = 0; j < countOfChild; j++) {
-                        node = listOfChild.item(j);
+                        Node node = listOfChild.item(j);
+
+                        System.out.println("!!! Number " + j + " ----" + node.getNodeType() + ": "
+                                + node.getNodeName() + ": " + node.getTextContent());
+                        String ss = node.hasChildNodes() ? node.getFirstChild().getNodeValue() : "";
+                        System.out.println("!!! Number " + j + " ----"
+                                + node.getNodeType() + ": "
+                                + node.getNodeName() + ": "
+                                + ss);
+
                         if (node.getNodeType() != Node.TEXT_NODE) {
-                            System.out.println(node.getNodeName() + ": "
-                                    + node.getFirstChild().getNodeValue());
+                            nameKey.append("/").append(node.getNodeName());
+                        } else if (!nameKey.toString().equals("")) {
+                            map.put(nameKey.toString(), node.getNodeValue());
+                            nameKey = new StringBuilder();
                         }
+                    }
+
+                    if (map.size() > 0) {
+                        StringBuilder query = new StringBuilder("INSERT INTO notifications (id, bidNumber, `key`, value) VALUES ");
+                        String bidNumber = map.getOrDefault("bidNumber", "");
+                        currentID++;
+                        for (Map.Entry<String, String> e : map.entrySet()) {
+                            query.append("(")
+                                    .append(currentID).append(", '")
+                                    .append(bidNumber).append("', '")
+                                    .append(e.getKey()).append("', '")
+                                    .append(e.getValue()).append("'")
+                                    .append("), ");
+                        }
+                        query.setLength(query.length() - 2);
+                        //Option.saveToBase(query.toString());
+                        System.out.println(query.toString());
                     }
                 }
             }
         }
     }
 
-    public static long getLastNumber() {
+    public static long getLastNumber() throws SQLException {
+        Statement stmt = Option.getStatement();
 
-        int count = -1;
+        assert stmt != null;
+        ResultSet rs = stmt.executeQuery("SELECT max(ID) FROM notifications");
+
+        assert rs != null;
+        rs.next();
+        return rs.getInt(1);
+    }
+
+    public static void saveToBase(String query) throws SQLException {
+        Statement stmt = Option.getStatement();
+        assert stmt != null;
+        stmt.executeUpdate(query);
+    }
+
+    public static Statement getStatement() {
 
         try {
             FileReader reader = new FileReader("src/main/resources/META-INF/db.properties");
@@ -115,15 +150,12 @@ public class Option {
             Class.forName(driver);
 
             Connection con = DriverManager.getConnection(url, user, password);
-            Statement stmt = con.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT max(ID) FROM notifications");
-            while (rs.next()) count = rs.getInt(1);
+            return con.createStatement();
 
         } catch (IOException | ClassNotFoundException | SQLException e) {
             e.printStackTrace();
+            return null;
         }
-
-        return count;
 
     }
 }

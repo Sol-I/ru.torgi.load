@@ -10,5 +10,11 @@
         <property name="serverTimezone" value="UTC" />
       </driver-properties>
     </data-source>
+    <data-source source="LOCAL" name="TORGI" uuid="31a26605-ce55-4585-a651-bb0991309ab8">
+      <driver-ref>sqlserver.ms</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.microsoft.sqlserver.jdbc.SQLServerDriver</jdbc-driver>
+      <jdbc-url>jdbc:sqlserver://DESKTOP-DIEJL0L\SQLEXPRESS;database=TORGI</jdbc-url>
+    </data-source>
   </component>
 </project>

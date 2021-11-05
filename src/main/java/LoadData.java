@@ -18,17 +18,14 @@ public class LoadData {
 
     public static void load(String url) throws SQLException {
 
-        long currentID = LoadData.getLastNumber() + 1;
-
-        Map<String, Map<String, String>> gMap = LoadData.getNotification(url, currentID);
+        Map<Long, Map<String, String>> gMap = LoadData.getNotification(url);
         LoadData.addDetailInfo(gMap);
 
-        for (Map.Entry<String, Map<String, String>> gm : gMap.entrySet()) {
-            String id = gm.getKey();
+        for (Map.Entry<Long, Map<String, String>> gm : gMap.entrySet()) {
             String bidNumber = gm.getValue().getOrDefault("bidNumber", "");
             for (Map.Entry<String, String> map : gm.getValue().entrySet()) {
                 if (!map.getKey().equals("bidNumber")) {
-                    StringBuilder query = new StringBuilder("INSERT INTO notifications (bidNumber, `key`, value) VALUES ");
+                    StringBuilder query = new StringBuilder("INSERT INTO notifications (bidNumber, key_nm, val) VALUES ");
                     query.append("('")
                             .append(bidNumber).append("', '")
                             .append(map.getKey()).append("', '")
@@ -38,7 +35,9 @@ public class LoadData {
                     LoadData.saveToBase(query.toString());
                 }
             }
-            System.out.println("Num " + gm.getKey());
+            System.out.println("Notification №" + gm.getKey() + " ("
+                    + (int) (1.0 * gm.getKey() / gMap.size() * 100) + "%)");
+//            if (gm.getKey() == 12) break;
         }
     }
 
@@ -47,10 +46,10 @@ public class LoadData {
         if (stmt != null) stmt.executeUpdate(query);
     }
 
-    public static Map<String, Map<String, String>> getNotification(String url, long initNum) {
+    public static Map<Long, Map<String, String>> getNotification(String url) {
 
         //Global map of notifications
-        Map<String, Map<String, String>> gMap = new TreeMap<>();
+        Map<Long, Map<String, String>> gMap = new TreeMap<>();
 
         Document doc = LoadData.getDoc(url);
         if (doc != null) {
@@ -60,33 +59,31 @@ public class LoadData {
                 Node node = mainNodeList.item(i);
                 //Get all tag (key, values) in node i
                 Map<String, String> map = getTag(node);
-                gMap.put(String.valueOf(i + initNum), map);
+                gMap.put((long) i, map);
             }
         }
         return gMap;
     }
 
-    public static void addDetailInfo(Map<String, Map<String, String>> gMap) {
+    public static void addDetailInfo(Map<Long, Map<String, String>> gMap) {
 
-        Map<String, String> temp = new TreeMap<>();
-        for (Map.Entry<String, Map<String, String>> gm : gMap.entrySet()) {
-            String idNotificaton = gm.getKey();
-            //Check availability tag 'odDetailedHref'
+        //list of odDetailedHref
+        Map<Long, String> temp = new TreeMap<>();
+        for (Map.Entry<Long, Map<String, String>> gm : gMap.entrySet()) {
             if (gm.getValue().containsKey("odDetailedHref")) {
-                //Get doc odDetailedHref
                 String url = gm.getValue().get("odDetailedHref").replace("http://", "https://");
-                temp.put(idNotificaton, url);
+                temp.put(gm.getKey(), url);
             }
         }
 
-        for (Map.Entry<String, String> e : temp.entrySet()) {
+        for (Map.Entry<Long, String> e : temp.entrySet()) {
             Document detailDoc = LoadData.getDoc(e.getValue());
             if (detailDoc != null) {
                 NodeList detailNodeList = detailDoc.getElementsByTagName("notification");
                 for (int i = 0; i < detailNodeList.getLength(); i++) {
                     Node detailNode = detailNodeList.item(i);
                     Map<String, String> detailMap = getTag(detailNode);
-                    gMap.put(e.getKey() + "-" + i, detailMap);
+                    gMap.get(e.getKey()).putAll(detailMap);
                 }
             }
         }
@@ -133,57 +130,23 @@ public class LoadData {
         }
     }
 
-    public static long getLastNumber() throws SQLException {
-        Statement stmt = LoadData.getStatement();
-
-        assert stmt != null;
-        ResultSet rs = stmt.executeQuery("SELECT max(ID) FROM notifications");
-
-        assert rs != null;
-        rs.next();
-        return rs.getInt(1);
-    }
-
     public static Statement getStatement() {
 
         try {
             FileReader reader = new FileReader("src/main/resources/META-INF/db.properties");
             Properties p = new Properties();
             p.load(reader);
-            String url = p.getProperty("urlMySQL");
+            String url = p.getProperty("urlMSSQL");
             String user = p.getProperty("user");
             String password = p.getProperty("password");
-            String driver = p.getProperty("driverMySQL");
+            String driver = p.getProperty("driverMSSQL");
 
             Class.forName(driver);
-
             Connection con = DriverManager.getConnection(url, user, password);
             return con.createStatement();
-
         } catch (IOException | ClassNotFoundException | SQLException e) {
             e.printStackTrace();
             return null;
-        }
-
-    }
-
-    public static void printAll(Map<String, Map<String, String>> gMap) {
-        //Print global map
-        for (Map.Entry<String, Map<String, String>> gm : gMap.entrySet()) {
-            for (Map.Entry<String, String> m : gm.getValue().entrySet()) {
-                System.out.println("Num " + gm.getKey() + " -- Key: " + m.getKey() + ", value: " + m.getValue());
-            }
-        }
-    }
-
-    public static void printNumber(Map<String, Map<String, String>> gMap, String idNotificaton) {
-        //Print specify idNotificaton
-        for (Map.Entry<String, Map<String, String>> gm : gMap.entrySet()) {
-            if (gm.getKey().startsWith(idNotificaton) || gm.getKey().startsWith(idNotificaton + "-")) {
-                for (Map.Entry<String, String> m : gm.getValue().entrySet()) {
-                    System.out.println("Num " + gm.getKey() + " -- Key: " + m.getKey() + ", value: " + m.getValue());
-                }
-            }
         }
     }
 

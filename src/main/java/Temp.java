@@ -11,6 +11,7 @@ import java.io.*;
 import java.net.URL;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Properties;
 
 public class Temp {
@@ -32,9 +33,7 @@ public class Temp {
         return sp.toString();
     }
 
-
     public static void main(String[] args) {
-        Statement st = getStatementMSSQL();
 //        exampleTest();
     }
 
@@ -146,33 +145,21 @@ public class Temp {
 
     }
 
-    public static Statement getStatementMSSQL() {
+    public static Statement getStatementMySQL() {
 
         try {
             FileReader reader = new FileReader("src/main/resources/META-INF/db.properties");
             Properties p = new Properties();
             p.load(reader);
-            String url = p.getProperty("urlMSSQL");
+            String url = p.getProperty("urlMySQL");
             String user = p.getProperty("user");
             String password = p.getProperty("password");
-            String driver = p.getProperty("driverMSSQL");
+            String driver = p.getProperty("driverMySQL");
 
             Class.forName(driver);
 
             Connection con = DriverManager.getConnection(url, user, password);
-
-            // Create and execute a SELECT SQL statement
-            Statement statement = con.createStatement();
-            ResultSet resultSet;
-            String selectSql = "SELECT * from notifications";
-            resultSet = statement.executeQuery(selectSql);
-
-            // Print results from select statement
-            while (resultSet.next()) {
-                System.out.println(resultSet.getInt(1));
-            }
-
-            return statement;
+            return con.createStatement();
 
         } catch (IOException | ClassNotFoundException | SQLException e) {
             e.printStackTrace();
@@ -180,4 +167,36 @@ public class Temp {
         }
 
     }
+
+    public static long getLastNumber() throws SQLException {
+        Statement stmt = LoadData.getStatement();
+
+        assert stmt != null;
+        ResultSet rs = stmt.executeQuery("SELECT max(ID) FROM notifications");
+
+        assert rs != null;
+        rs.next();
+        return rs.getInt(1);
+    }
+
+    public static void printAll(Map<String, Map<String, String>> gMap) {
+        //Print global map
+        for (Map.Entry<String, Map<String, String>> gm : gMap.entrySet()) {
+            for (Map.Entry<String, String> m : gm.getValue().entrySet()) {
+                System.out.println("Num " + gm.getKey() + " -- Key: " + m.getKey() + ", value: " + m.getValue());
+            }
+        }
+    }
+
+    public static void printNumber(Map<String, Map<String, String>> gMap, String idNotificaton) {
+        //Print specify idNotificaton
+        for (Map.Entry<String, Map<String, String>> gm : gMap.entrySet()) {
+            if (gm.getKey().startsWith(idNotificaton) || gm.getKey().startsWith(idNotificaton + "-")) {
+                for (Map.Entry<String, String> m : gm.getValue().entrySet()) {
+                    System.out.println("Num " + gm.getKey() + " -- Key: " + m.getKey() + ", value: " + m.getValue());
+                }
+            }
+        }
+    }
+
 }
